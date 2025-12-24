@@ -4,6 +4,18 @@ This directory contains example scripts demonstrating various use cases of Neuro
 
 ## Example Scripts
 
+### 0. Simple Workflow (`00_simple_workflow.py`) ⭐ START HERE
+**The main use case** - Load data, load model, annotate cell types:
+- All-in-one annotation function
+- Custom label mapping
+- Prediction probabilities
+- Different annotation methods
+
+**Run:**
+```bash
+python examples/00_simple_workflow.py
+```
+
 ### 1. Quick Start (`01_quick_start.py`)
 Basic workflow showing how to:
 - Load and preprocess data
@@ -59,6 +71,18 @@ Batch integration using foundation models:
 **Run:**
 ```bash
 python examples/05_batch_integration.py
+```
+
+### 6. Upload Model (`06_upload_model.py`)
+Share your finetuned model on HuggingFace:
+- Setting up HuggingFace authentication
+- Uploading models (FREE hosting!)
+- Creating model cards
+- Sharing with the community
+
+**Run:**
+```bash
+python examples/06_upload_model.py
 ```
 
 ## Jupyter Notebooks

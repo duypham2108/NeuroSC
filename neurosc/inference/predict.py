@@ -16,7 +16,7 @@ def predict(
     batch_size: int = 64,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
     return_probs: bool = False,
-) -> np.ndarray:
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
     """
     Make predictions on single-cell data.
     
@@ -37,8 +37,9 @@ def predict(
     
     Returns
     -------
-    np.ndarray
-        Predictions or probabilities.
+    np.ndarray or dict
+        If return_probs=False: array of predicted labels
+        If return_probs=True: dict with 'labels' and 'probabilities'
     
     Examples
     --------
@@ -67,7 +68,7 @@ def predict(
         gene_vocab=gene_vocab,
     )
     
-    predictions = []
+    all_logits = []
     
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Predicting"):
@@ -82,15 +83,22 @@ def predict(
                 outputs = model.predict(expression, expression)
             
             logits = outputs['logits'] if isinstance(outputs, dict) else outputs
-            
-            if return_probs:
-                probs = torch.softmax(logits, dim=-1)
-                predictions.append(probs.cpu().numpy())
-            else:
-                preds = torch.argmax(logits, dim=-1)
-                predictions.append(preds.cpu().numpy())
+            all_logits.append(logits.cpu().numpy())
     
-    return np.concatenate(predictions, axis=0)
+    all_logits = np.concatenate(all_logits, axis=0)
+    
+    if return_probs:
+        # Return both labels and probabilities
+        from scipy.special import softmax
+        probs = softmax(all_logits, axis=-1)
+        labels = np.argmax(all_logits, axis=-1)
+        return {
+            'labels': labels,
+            'probabilities': probs
+        }
+    else:
+        # Return only labels
+        return np.argmax(all_logits, axis=-1)
 
 
 def embed(

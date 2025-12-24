@@ -69,82 +69,197 @@ All dependencies are automatically installed with the package.
 
 ## Quick Start
 
+### Cell Type Annotation (Main Use Case)
+
+The primary workflow: **Load data → Load model → Annotate**
+
 ```python
 import neurosc as nsc
-import scanpy as sc
 
-# Load your data
-adata = sc.read_h5ad("your_neuroscience_data.h5ad")
+# Annotate cell types in 3 lines!
+adata = nsc.annotate_celltype(
+    adata_path="brain_data.h5ad",              # Your h5ad file
+    model_path="username/brain-classifier"     # Your finetuned model
+)
 
-# Preprocess with NeuroSC
-adata = nsc.prepare_anndata(adata, min_genes=200, highly_variable_genes=3000)
+# Done! View results
+print(adata.obs['cell_type'].value_counts())
+```
 
-# Load a pretrained model
-model = nsc.load_model("scgpt-base-neuroscience")
+### With Custom Labels
 
-# Generate embeddings
-adata = nsc.embed(model, adata, key_added="X_scgpt")
+```python
+# Define your cell type mapping
+cell_types = {
+    0: 'Excitatory Neuron',
+    1: 'Inhibitory Neuron',
+    2: 'Astrocyte',
+    3: 'Oligodendrocyte',
+    4: 'Microglia'
+}
 
-# Continue with scanpy workflow
-sc.pp.neighbors(adata, use_rep="X_scgpt")
-sc.tl.umap(adata)
-sc.tl.leiden(adata)
-sc.pl.umap(adata, color=['leiden', 'cell_type'])
+# Annotate with named labels
+adata = nsc.annotate_celltype(
+    adata_path="brain_data.h5ad",
+    model_path="username/brain-classifier",
+    label_mapping=cell_types,
+    return_probabilities=True
+)
+```
+
+### Complete Workflow with Visualization
+
+```python
+# Load → Annotate → Visualize → Save
+adata = nsc.load_and_annotate(
+    data_path="brain_data.h5ad",
+    model_path="username/brain-classifier",
+    save_path="annotated.h5ad",
+    visualize=True
+)
 ```
 
 ---
 
 ## Features
 
-### 🎯 Foundation Model Support
+### 🎯 Simple Cell Type Annotation
 
-- **scGPT**: State-of-the-art transformer model for single-cell data
-- **Custom models**: Easy integration of new foundation models
-- **Pretrained weights**: Access neuroscience-optimized checkpoints
+**Main workflow** - The primary use case:
 
-### 🔧 Finetuning Strategies
+```python
+# 1. Load your h5ad file
+# 2. Load your finetuned model  
+# 3. Get cell type annotations automatically
+
+adata = nsc.annotate_celltype("data.h5ad", "your-model")
+```
+
+That's it! Your data now has cell type annotations in `adata.obs['cell_type']`.
+
+### 🔧 Model Training & Finetuning
+
+Train your own classification models:
 
 - **Full finetuning**: Update all model parameters
 - **LoRA** (Low-Rank Adaptation): Parameter-efficient finetuning
-- **Freeze backbone**: Only train classification head
-
-### 🧬 Scanpy Integration
-
-NeuroSC provides a `tl` (tools) module with scanpy-style functions:
+- **Quick finetune**: One-line finetuning with sensible defaults
 
 ```python
-import neurosc as nsc
-
-# Use like scanpy
-nsc.tl.embed_cells(adata)              # Instead of sc.tl.pca
-nsc.tl.cluster_cells(adata)            # Clustering with embeddings
-nsc.tl.annotate_cells(adata)           # Automatic cell type annotation
-nsc.tl.integrate_batches(adata, "batch")  # Batch integration
+# Finetune your own classifier
+model = nsc.tools.quick_finetune(
+    adata_train,
+    label_key="cell_type",
+    strategy="lora"  # Fast, memory-efficient
+)
 ```
 
 ### 🤗 HuggingFace Hub Integration
 
-Upload and share your finetuned models for free:
+Share your models with the community (FREE hosting!):
 
 ```python
-# Finetune your model
-model = nsc.load_model("scgpt-base-neuroscience")
-# ... finetuning code ...
-
-# Upload to HuggingFace (free hosting!)
+# Upload your finetuned model
 nsc.upload_to_hub(
     model, 
-    repo_id="your-username/my-neuroscience-model",
-    commit_message="Finetuned on cortical neurons"
+    repo_id="your-username/brain-classifier",
+    commit_message="Finetuned on mouse cortex"
 )
 
-# Anyone can now use your model:
-model = nsc.load_model("your-username/my-neuroscience-model")
+# Anyone can now use it:
+adata = nsc.annotate_celltype("data.h5ad", "your-username/brain-classifier")
+```
+
+### 🧬 Scanpy Integration
+
+NeuroSC works seamlessly with scanpy workflows:
+
+```python
+import scanpy as sc
+import neurosc as nsc
+
+# Standard scanpy preprocessing
+sc.pp.filter_cells(adata, min_genes=200)
+sc.pp.normalize_total(adata)
+
+# Use NeuroSC for annotation
+nsc.annotate_celltype(adata, "model-name")
+
+# Continue with scanpy
+sc.tl.umap(adata)
+sc.pl.umap(adata, color='cell_type')
 ```
 
 ---
 
 ## Usage Examples
+
+### Main Workflow: Cell Type Annotation
+
+**Simplest usage:**
+
+```python
+import neurosc as nsc
+
+# Annotate cell types
+adata = nsc.annotate_celltype(
+    adata_path="brain_data.h5ad",
+    model_path="username/brain-classifier"
+)
+
+# View results
+print(adata.obs['cell_type'].value_counts())
+```
+
+**With custom cell type names:**
+
+```python
+# Define your label mapping (from your training)
+labels = {
+    0: 'Excitatory Neuron',
+    1: 'Inhibitory Neuron',
+    2: 'Astrocyte',
+    3: 'Oligodendrocyte',
+    4: 'Microglia',
+    5: 'Endothelial'
+}
+
+# Annotate with labels
+adata = nsc.annotate_celltype(
+    adata_path="brain_data.h5ad",
+    model_path="username/brain-classifier",
+    label_mapping=labels,
+    return_probabilities=True  # Get confidence scores
+)
+
+# Check prediction confidence
+probs = adata.obsm['cell_type_probabilities']
+max_confidence = probs.max(axis=1).mean()
+print(f"Average confidence: {max_confidence:.1%}")
+```
+
+**One-liner with save:**
+
+```python
+# Annotate and save in one line
+adata = nsc.quick_annotate(
+    h5ad_file="data.h5ad",
+    model="username/classifier",
+    output_file="annotated_data.h5ad"
+)
+```
+
+**Complete workflow:**
+
+```python
+# Load → Annotate → Visualize → Save
+adata = nsc.load_and_annotate(
+    data_path="brain_data.h5ad",
+    model_path="username/brain-classifier",
+    save_path="results/annotated.h5ad",
+    visualize=True  # Creates UMAP plot
+)
+```
 
 ### Data Preprocessing
 
@@ -426,11 +541,17 @@ model = nsc.load_model(model_path)
 
 ## API Reference
 
+### Main API - Cell Type Annotation
+
+- **`nsc.annotate_celltype(adata_path, model_path, ...)`** - Annotate cell types (main function)
+- **`nsc.quick_annotate(h5ad_file, model, ...)`** - One-liner with save
+- **`nsc.load_and_annotate(...)`** - Complete workflow with visualization
+
 ### Core Functions
 
-- `nsc.load_model(model_name)` - Load a pretrained model
-- `nsc.list_pretrained_models()` - List available models
-- `nsc.prepare_anndata(adata, ...)` - Preprocess data for models
+- `nsc.load_model(model_name)` - Load a finetuned model
+- `nsc.list_pretrained_models()` - List available base models
+- `nsc.prepare_anndata(adata, ...)` - Preprocess data
 - `nsc.embed(model, adata, ...)` - Generate cell embeddings
 - `nsc.predict(model, adata, ...)` - Make predictions
 
